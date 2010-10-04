@@ -32,8 +32,11 @@
   <div class="box">
 
   <p>
-    This is an example consumer built for the Django framework.  Enter
-    an OpenID in the box below.
+    This is an example consumer built for the Django framework.
+
+  <p>
+    Enter an OpenID in the box below. In production, this will be a hardcoded
+    value stored by Tippr as part of partner setup, not visible to the user.
   </p>
 
   {% if error %}
@@ -46,18 +49,6 @@
         <a href="{{ url }}">{{ url|escape }}</a>.
 
       <p>
-      {% if sreg %}
-        Simple Registration data returned:
-
-        <ul>
-        {% for pair in sreg %}
-          <li>{{ pair.0 }}: {{ pair.1 }}</li>
-        {% endfor %}
-        </ul>
-      {% else %}
-        The server returned no Simple Registration data.
-      {% endif %}
-
       {% if ax %}
         Attribute Exchange data returned:
 
@@ -68,18 +59,6 @@
         </ul>
       {% else %}
         The server returned no Attribute Exchange data.
-      {% endif %}
-
-      {% if pape %}
-        An authentication policy response contained these policies:
-
-        <ul>
-          {% for uri in pape.auth_policies %}
-            <li><tt>{{ uri }}</tt></li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        The server returned no authentication policy data (PAPE).
       {% endif %}
       </p>
     </div>
@@ -100,25 +79,9 @@
   <form method="post" action="{{ consumer_url }}">
     <input type="text" size="40" name="openid_identifier" />
 
-    <p>
-    Request these authentication policies
-      (<a href="http://openid.net/specs/openid-provider-authentication-policy-extension-1_0-02.html">PAPE</a>):
-
-    <table>
-      {% for pair in pape_policies %}
-      <tr>
-        <td><input type="checkbox" name="policy_{{ pair.0 }}" id="id_policy_{{ pair.0 }}" /></td>
-        <td>
-          <label for="id_policy_{{ pair.0 }}"><tt>
-            {{ pair.1 }}
-          </tt></label>
-        </td>
-      </tr>
-      {% endfor %}
-    </table>
-    </p>
-
-    <input type="submit" value="Begin" />
+    <input type="submit" name="action" id="button_login" value="Log In" />
+    <input type="submit" name="action" id="button_create" value="Create" />
+    <input type="submit" id="button_connect" value="Facebook Connect" />
   </form>
 
   </div>

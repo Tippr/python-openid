@@ -5,21 +5,20 @@ from django.views.generic.simple import direct_to_template
 
 from openid.consumer import consumer
 from openid.consumer.discover import DiscoveryFailure
-from openid.extensions import ax, pape, sreg
+from openid.extensions import ax
 from openid.yadis.constants import YADIS_HEADER_NAME, YADIS_CONTENT_TYPE
 from openid.server.trustroot import RP_RETURN_TO_URL_TYPE
 
 from djopenid import util
 
-PAPE_POLICIES = [
-    'AUTH_PHISHING_RESISTANT',
-    'AUTH_MULTI_FACTOR',
-    'AUTH_MULTI_FACTOR_PHYSICAL',
-    ]
+AX_ATTRS = {
+    'fullname': ('http://axschema.org/namePerson', True),
+    'email': ('http://axschema.org/contact/email', True),
+    'zip': ('http://axschema.org/contact/postalCode/home', False),
+    'facebookid': ('http://tippr.com/openid/ax/facebookid', False),
+}
 
 # List of (name, uri) for use in generating the request form.
-POLICY_PAIRS = [(p, getattr(pape, p))
-                for p in PAPE_POLICIES]
 
 def getOpenIDStore():
     """
@@ -36,7 +35,6 @@ def getConsumer(request):
 
 def renderIndexPage(request, **template_args):
     template_args['consumer_url'] = util.getViewURL(request, startOpenID)
-    template_args['pape_policies'] = POLICY_PAIRS
 
     response =  direct_to_template(
         request, 'consumer/index.html', template_args)
@@ -75,40 +73,12 @@ def startOpenID(request):
             # Render the page with an error.
             return renderIndexPage(request, error=error)
 
-        # Add Simple Registration request information.  Some fields
-        # are optional, some are required.  It's possible that the
-        # server doesn't support sreg or won't return any of the
-        # fields.
-        sreg_request = sreg.SRegRequest(optional=['email', 'nickname'],
-                                        required=['dob'])
-        auth_request.addExtension(sreg_request)
-
         # Add Attribute Exchange request information.
         ax_request = ax.FetchRequest()
-        # XXX - uses myOpenID-compatible schema values, which are
-        # not those listed at axschema.org.
-        ax_request.add(
-            ax.AttrInfo('http://schema.openid.net/namePerson',
-                        required=True))
-        ax_request.add(
-            ax.AttrInfo('http://schema.openid.net/contact/web/default',
-                        required=False, count=ax.UNLIMITED_VALUES))
+
+        for (attr_uri, required) in AX_ATTRS.values():
+            ax_request.add(ax.AttrInfo(attr_uri, required=required))
         auth_request.addExtension(ax_request)
-
-        # Add PAPE request information.  We'll ask for
-        # phishing-resistant auth and display any policies we get in
-        # the response.
-        requested_policies = []
-        policy_prefix = 'policy_'
-        for k, v in request.POST.iteritems():
-            if k.startswith(policy_prefix):
-                policy_attr = k[len(policy_prefix):]
-                if policy_attr in PAPE_POLICIES:
-                    requested_policies.append(getattr(pape, policy_attr))
-
-        if requested_policies:
-            pape_request = pape.Request(requested_policies)
-            auth_request.addExtension(pape_request)
 
         # Compute the trust root and return URL values to build the
         # redirect information.
@@ -161,28 +131,11 @@ def finishOpenID(request):
 
         # Get a Simple Registration response object if response
         # information was included in the OpenID response.
-        sreg_response = {}
         ax_items = {}
         if response.status == consumer.SUCCESS:
-            sreg_response = sreg.SRegResponse.fromSuccessResponse(response)
-
             ax_response = ax.FetchResponse.fromSuccessResponse(response)
             if ax_response:
-                ax_items = {
-                    'fullname': ax_response.get(
-                        'http://schema.openid.net/namePerson'),
-                    'web': ax_response.get(
-                        'http://schema.openid.net/contact/web/default'),
-                    }
-
-        # Get a PAPE response object if response information was
-        # included in the OpenID response.
-        pape_response = None
-        if response.status == consumer.SUCCESS:
-            pape_response = pape.Response.fromSuccessResponse(response)
-
-            if not pape_response.auth_policies:
-                pape_response = None
+                ax_items = dict([ (name, ax_response.get(uri)) for (name, (uri, required)) in AX_ATTRS.iteritems() ])
 
         # Map different consumer status codes to template contexts.
         results = {
@@ -194,9 +147,7 @@ def finishOpenID(request):
 
             consumer.SUCCESS:
             {'url': response.getDisplayIdentifier(),
-             'sreg': sreg_response and sreg_response.items(),
-             'ax': ax_items.items(),
-             'pape': pape_response}
+             'ax': ax_items.items()}
             }
 
         result = results[response.status]

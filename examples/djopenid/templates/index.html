@@ -1,13 +1,12 @@
 <html>
   <head>
-    <title>Python OpenID Example</title>
+    <title>Tippr OpenID Example</title>
   </head>
   <body>
     <p>
-    This is a Django package which implements both an OpenID server
-    and an OpenID consumer.  These examples are provided with the
-    OpenID library so you can learn how to use it in your own
-    applications.
+    This is a Django package which implements an OpenID server and consumer,
+    using the assumptions and protocol extensions leveraged by Tippr for
+    partner login. It is based on the djopenid codebase from Janrain.
     </p>
 
     <p>
@@ -15,8 +14,8 @@
     </p>
 
     <ul>
-      <li><a href="{{ consumer_url }}">Example Consumer (Relying Party)</a></li>
-      <li><a href="{{ server_url }}">Example Server (Identity Provider)</a></li>
+      <li><a href="{{ consumer_url }}">Tippr (Relying Party)</a></li>
+      <li><a href="{{ server_url }}">Partner (Identity Provider)</a></li>
     </ul>
 
     <p>
