@@ -5,7 +5,8 @@ from django.views.generic.simple import direct_to_template
 
 from openid.consumer import consumer
 from openid.consumer.discover import DiscoveryFailure
-from openid.extensions import ax
+from openid.extensions import ax, ui, tippr
+from openid.message import IDENTIFIER_SELECT
 from openid.yadis.constants import YADIS_HEADER_NAME, YADIS_CONTENT_TYPE
 from openid.server.trustroot import RP_RETURN_TO_URL_TYPE
 
@@ -60,6 +61,8 @@ def startOpenID(request):
     if request.POST:
         # Start OpenID authentication.
         openid_url = request.POST['openid_identifier']
+        action = request.POST['action']
+        javascript_enabled = request.POST.get('javascript_enabled', default=False)
         c = getConsumer(request)
         error = None
 
@@ -73,12 +76,26 @@ def startOpenID(request):
             # Render the page with an error.
             return renderIndexPage(request, error=error)
 
+        auth_request.endpoint.claimed_id = IDENTIFIER_SELECT
+
         # Add Attribute Exchange request information.
         ax_request = ax.FetchRequest()
 
         for (attr_uri, required) in AX_ATTRS.values():
             ax_request.add(ax.AttrInfo(attr_uri, required=required))
         auth_request.addExtension(ax_request)
+
+        tippr_request = tippr.Request()
+        if action == 'Log In':
+            tippr_request.account_creation = False
+        elif action == 'Create':
+            tippr_request.account_creation = True
+        elif action == 'Facebook Connect':
+            tippr_request.desired_auth = 'facebook'
+        auth_request.addExtension(tippr_request)
+
+        if javascript_enabled:
+            auth_request.addExtension(ui.Request(ui_mode='popup'))
 
         # Compute the trust root and return URL values to build the
         # redirect information.
@@ -132,7 +149,9 @@ def finishOpenID(request):
         # Get a Simple Registration response object if response
         # information was included in the OpenID response.
         ax_items = {}
+        tippr_response = None
         if response.status == consumer.SUCCESS:
+            tippr_response = tippr.Response.fromSuccessResponse(response)
             ax_response = ax.FetchResponse.fromSuccessResponse(response)
             if ax_response:
                 ax_items = dict([ (name, ax_response.get(uri)) for (name, (uri, required)) in AX_ATTRS.iteritems() ])
@@ -147,7 +166,8 @@ def finishOpenID(request):
 
             consumer.SUCCESS:
             {'url': response.getDisplayIdentifier(),
-             'ax': ax_items.items()}
+             'ax': ax_items.items(),
+             'tippr': tippr_response}
             }
 
         result = results[response.status]

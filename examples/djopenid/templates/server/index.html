@@ -36,13 +36,11 @@
   <div class="box">
 
   <p>
-    This is an example server built for the Django framework.  It only
-    authenticates one OpenID, which is also served by this
-    application.  The OpenID it serves is
+    This is an example server built for the Django framework.
 
-    <pre>
-<a href="{{ user_url }}">{{ user_url }}</a>
-    </pre>
+    OpenID providers should directly use this URL ({{ server_url }}) to speak
+    with the server; it will provide an ID with the appropriate username as the
+    last URL element.
   </p>
 
   </div>

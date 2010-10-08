@@ -1,0 +1,10 @@
+{% if ax_request %}
+  <p>An Attribute Exchange request is present. The following items are requested:</p>
+  <ul>
+  {% for item in ax_request %}
+  <li>{{ item }}</li>
+  {% endfor %}
+  </ul>
+{% else %}
+  <p>No Attribute Exchange request is present.</p>
+{% endif %}

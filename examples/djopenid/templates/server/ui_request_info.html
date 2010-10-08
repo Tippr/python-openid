@@ -1,0 +1,34 @@
+<!-- ui_request processing -->
+{% if ui_request %}
+  <p>The relaying party has implemented the UI extension</p>
+
+  {% if ui_request.langs %}
+    <p>The relaying party has advised that this page should be presented using one of the following localizations:</p>
+
+    <ul>
+    {% for lang in ui_request.langs %}
+    <li>{{ lang }}</li>
+    {% endfor %}
+    </ul>
+  {% else %}
+    <p>The relaying party has not provided a suggested list of languages.</p>
+  {% endif %}
+
+  {% if ui_request.ui_mode %}
+    <p>The relaying party has advised that the following mode should be in effect for this authentication: <i>{{ ui_request.ui_mode }}</i></p>
+  {% else %}
+    <p>The relaying party has not suggested a presentation mode.</p>
+  {% endif %}
+
+  {% if ui_request.icon %}
+    <p>The relaying party has requested to be represented by the following icon: <img src="{{ ui_request.icon }}"/></p>
+  {% else %}
+    <p>The relaying party has not provided an icon to present.</p>
+  {% endif %}
+
+{% else %}
+
+<p>The UI extension is not present on this request.</p>
+
+{% endif %}
+<!-- end ui_request processing -->

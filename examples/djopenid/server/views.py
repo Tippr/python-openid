@@ -28,8 +28,10 @@ from openid.server.server import Server, ProtocolError, CheckIDRequest, \
 from openid.server.trustroot import verifyReturnTo
 from openid.yadis.discover import DiscoveryFailure
 from openid.consumer.discover import OPENID_IDP_2_0_TYPE
+from openid.extensions import ax
 from openid.extensions import sreg
-from openid.extensions import pape
+from openid.extensions import ui
+from openid.extensions import tippr
 from openid.fetchers import HTTPFetchingError
 
 def getOpenIDStore():
@@ -67,7 +69,7 @@ def server(request):
     return direct_to_template(
         request,
         'server/index.html',
-        {'user_url': getViewURL(request, idPage),
+        {'server_url': getViewURL(request, server),
          'server_xrds_url': getViewURL(request, idpXrds),
          })
 
@@ -79,14 +81,15 @@ def idpXrds(request):
     return util.renderXRDS(
         request, [OPENID_IDP_2_0_TYPE], [getViewURL(request, endpoint)])
 
-def idPage(request):
+def idPage(request, username=None):
     """
     Serve the identity page for OpenID URLs.
     """
     return direct_to_template(
         request,
         'server/idPage.html',
-        {'server_url': getViewURL(request, endpoint)})
+        {'server_url': getViewURL(request, endpoint),
+         'username': username})
 
 def trustPage(request):
     """
@@ -127,6 +130,7 @@ def endpoint(request):
 
     # We got a request; if the mode is checkid_*, we will handle it by
     # getting feedback from the user or by checking the session.
+    # TODO: handle ui extension in checkid_immediate
     if openid_request.mode in ["checkid_immediate", "checkid_setup"]:
         return handleCheckIDRequest(request, openid_request)
     else:
@@ -147,8 +151,9 @@ def handleCheckIDRequest(request, openid_request):
     # default identity URL for this server. In a full-featured
     # provider, there could be interaction with the user to determine
     # what URL should be sent.
-    if not openid_request.idSelect():
-
+    if openid_request.idSelect():
+        pass # correct behavior for Tippr
+    else:
         id_url = getViewURL(request, idPage)
 
         # Confirm that this server can actually vouch for that
@@ -168,6 +173,8 @@ def handleCheckIDRequest(request, openid_request):
         # If we did, then the answer would depend on whether that user
         # had trusted the request's trust root and whether the user is
         # even logged in.
+        # TODO: session tracking!
+        # TODO: use ui extension to distinguish logged-in-but-untrusted
         openid_response = openid_request.answer(False)
         return displayResponse(request, openid_response)
     else:
@@ -194,7 +201,9 @@ def showDecidePage(request, openid_request):
     except HTTPFetchingError, err:
         trust_root_valid = "Unreachable"
 
-    pape_request = pape.Request.fromOpenIDRequest(openid_request)
+    ax_request = ax.FetchRequest.fromOpenIDRequest(openid_request)
+    ui_request = ui.Request.fromOpenIDRequest(openid_request)
+    tippr_request = tippr.Request.fromOpenIDRequest(openid_request)
 
     return direct_to_template(
         request,
@@ -202,7 +211,10 @@ def showDecidePage(request, openid_request):
         {'trust_root': trust_root,
          'trust_handler_url':getViewURL(request, processTrustResult),
          'trust_root_valid': trust_root_valid,
-         'pape_request': pape_request,
+         'ax_request': ax_request,
+         'tippr_request': tippr_request,
+         'tippr_account_creation_flag_present': tippr_request.account_creation is not None,
+         'ui_request': ui_request,
          })
 
 def processTrustResult(request):
@@ -215,7 +227,7 @@ def processTrustResult(request):
     openid_request = getRequest(request)
 
     # The identifier that this server can vouch for
-    response_identity = getViewURL(request, idPage)
+    response_identity = getViewURL(request, idPage, kwargs={'username':'SERVER_PROVIDED_USERNAME'})
 
     # If the decision was to allow the verification, respond
     # accordingly.
@@ -239,13 +251,34 @@ def processTrustResult(request):
             'timezone': 'America/New_York',
             }
 
-        sreg_req = sreg.SRegRequest.fromOpenIDRequest(openid_request)
-        sreg_resp = sreg.SRegResponse.extractResponse(sreg_req, sreg_data)
-        openid_response.addExtension(sreg_resp)
+        # no longer supporting sreg in favor of ax
+        #sreg_req = sreg.SRegRequest.fromOpenIDRequest(openid_request)
+        #sreg_resp = sreg.SRegResponse.extractResponse(sreg_req, sreg_data)
+        #openid_response.addExtension(sreg_resp)
 
-        pape_response = pape.Response()
-        pape_response.setAuthLevel(pape.LEVELS_NIST, 0)
-        openid_response.addExtension(pape_response)
+        # TODO: add more items to this than just what Tippr supports
+        ax_sreg_map = {
+            'http://axschema.org/namePerson': 'fullname',
+            'http://axschema.org/contact/email': 'email',
+            'http://axschema.org/contact/postalCode/home': 'postcode',
+        }
+        ax_data = {
+            'http://tippr.com/openid/ax/facebookid': 'example_facebook_id',
+        }
+
+        ax_req = ax.FetchRequest.fromOpenIDRequest(openid_request)
+        if ax_req:
+            ax_resp = ax.FetchResponse(request=ax_req)
+            for uri in ax_req:
+                if uri in ax_sreg_map and ax_sreg_map[uri] in sreg_data:
+                    ax_resp.addValue(uri, sreg_data[ax_sreg_map[uri]])
+                elif uri in ax_data:
+                    ax_resp.addValue(uri, ax_data[uri])
+            openid_response.addExtension(ax_resp)
+
+        tippr_req = tippr.Request.fromOpenIDRequest(openid_request)
+        if tippr_req and tippr_req.desired_auth == 'facebook':
+            openid_response.addExtension(tippr.Response(facebook_token='FAKE_FACEBOOK_TOKEN'))
 
     return displayResponse(request, openid_response)
 

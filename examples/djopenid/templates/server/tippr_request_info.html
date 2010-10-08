@@ -1,0 +1,21 @@
+<!-- tippr_request processing -->
+{% if tippr_request %}
+  <p>The relaying party has implemented the Tippr extension</p>
+
+  {% if tippr_account_creation_flag_present %}
+    <p>The relaying party has indicated that account creation is <i>probably {% if not tippr_request.account_creation %} not {% endif %}</i> in progress.</p>
+  {% else %}
+    <p>The relaying party has not indicated whether account creation is expected to be in-progress.</p>
+  {% endif %}
+
+  {% if tippr_request.desired_auth %}
+    <p>The relaying party has indicated that the user wants to use <em>{{ tippr_request.desired_auth }}</em> authentication.</p>
+  {% else %}
+    <p>The relaying party has not indicated any authentication preferences on the part of the user.</p>
+  {% endif %}
+{% else %}
+
+<p>The Tippr extension is not present on this request.</p>
+
+{% endif %}
+<!-- end tippr_request processing -->

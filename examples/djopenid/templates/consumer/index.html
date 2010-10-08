@@ -61,6 +61,18 @@
         The server returned no Attribute Exchange data.
       {% endif %}
       </p>
+
+      <p>
+      {% if tippr %}
+        {% if tippr.facebook_token %}
+          Facebook token <i>{{ tippr.facebook_token }}</i> was provided.
+        {% else %}
+          No Facebook token was provided.
+        {% endif %}
+      {% else %}
+        The server returned no tippr extension data.
+      {% endif %}
+      </p>
     </div>
   {% endif %}
 
@@ -79,9 +91,12 @@
   <form method="post" action="{{ consumer_url }}">
     <input type="text" size="40" name="openid_identifier" />
 
-    <input type="submit" name="action" id="button_login" value="Log In" />
-    <input type="submit" name="action" id="button_create" value="Create" />
-    <input type="submit" id="button_connect" value="Facebook Connect" />
+    <input type="submit" name="action" value="Log In" />
+    <input type="submit" name="action" value="Create" />
+    <input type="submit" name="action" value="Facebook Connect" />
+    <script type="text/javascript">
+        document.write('<input type="hidden" name="javascript_enabled" value="true" />')
+    </script>
   </form>
 
   </div>
