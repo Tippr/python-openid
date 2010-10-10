@@ -96,10 +96,11 @@ class Request(Extension):
 class Response(Extension):
     ns_alias = 'tippr'
 
-    def __init__(self, facebook_token=None, tippr_ns_uri=ns_uri):
+    def __init__(self, facebook_token=None, signup_ip=None, tippr_ns_uri=ns_uri):
         Extension.__init__(self)
         self.ns_uri = tippr_ns_uri
 
+        self.signup_ip = signup_ip
         self.facebook_token = facebook_token
 
     @classmethod
@@ -108,11 +109,14 @@ class Response(Extension):
         args = success_response.message.getArgs(self.ns_uri)
 
         self.facebook_token = args.pop('facebook_token', None)
+        self.signup_ip = args.pop('signup_ip', None)
 
         return self
 
     def getExtensionArgs(self):
+        args = {}
         if self.facebook_token:
-            return {'facebook_token': self.facebook_token}
-        else:
-            return {}
+            args['facebook_token'] = self.facebook_token
+        if self.signup_ip:
+            args['signup_ip'] = self.signup_ip
+        return args
