@@ -279,7 +279,7 @@ class Consumer(object):
 
     _discover = staticmethod(discover)
 
-    def __init__(self, session, store, consumer_class=None):
+    def __init__(self, session, store, consumer_class=None, https_only=False):
         """Initialize a Consumer instance.
 
         You should create a new instance of the Consumer object with
@@ -302,6 +302,7 @@ class Consumer(object):
             consumer_class = GenericConsumer
         self.consumer = consumer_class(store)
         self._token_key = self.session_key_prefix + self._token
+        self._https_only = https_only
 
     def begin(self, user_url, anonymous=False):
         """Start the OpenID authentication process. See steps 1-2 in
@@ -339,9 +340,16 @@ class Consumer(object):
             is available, L{openid.consumer.discover.DiscoveryFailure} is
             an alias for C{yadis.discover.DiscoveryFailure}.
         """
-        disco = Discovery(self.session, user_url, self.session_key_prefix)
+        service = None
+
         try:
-            service = disco.getNextService(self._discover)
+            disco = Discovery(self.session, user_url, self.session_key_prefix)
+            for service in disco.iterServices(self._discover):
+                if self._https_only:
+                    if not service.server_url.startswith('https://'):
+                        oidutil.log('HTTPS-only mode; discarding endpoint %r' % service.server_url)
+                        continue
+                break
         except fetchers.HTTPFetchingError, why:
             raise DiscoveryFailure(
                 'Error fetching XRDS document: %s' % (why[0],), None)
