@@ -84,6 +84,21 @@ class Discovery(object):
 
         self.session_key_suffix = session_key_suffix
 
+    def iterServices(self, discover):
+        manager = self.getManager()
+        if manager is not None and not manager:
+            self.destroyManager()
+
+        if not manager:
+            yadis_url, services = discover(self.url)
+            manager = self.createManager(services, yadis_url)
+
+        if manager:
+            while True:
+                service = manager.next()
+                manager.store(self.session)
+                yield service
+
     def getNextService(self, discover):
         """Return the next authentication service for the pair of
         user_input and session.  This function handles fallback.
