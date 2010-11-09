@@ -96,12 +96,13 @@ class Request(Extension):
 class Response(Extension):
     ns_alias = 'tippr'
 
-    def __init__(self, facebook_token=None, signup_ip=None, tippr_ns_uri=ns_uri):
+    def __init__(self, facebook_token=None, signup_ip=None, channel_name=None, tippr_ns_uri=ns_uri):
         Extension.__init__(self)
         self.ns_uri = tippr_ns_uri
 
         self.signup_ip = signup_ip
         self.facebook_token = facebook_token
+        self.channel_name = channel_name
 
     @classmethod
     def fromSuccessResponse(cls, success_response):
@@ -110,6 +111,7 @@ class Response(Extension):
 
         self.facebook_token = args.pop('facebook_token', None)
         self.signup_ip = args.pop('signup_ip', None)
+        self.channel_name = args.pop('channel_name', None)
 
         return self
 
@@ -119,4 +121,8 @@ class Response(Extension):
             args['facebook_token'] = self.facebook_token
         if self.signup_ip:
             args['signup_ip'] = self.signup_ip
+        if self.channel_name:
+            args['channel_name'] = self.channel_name
         return args
+
+# vim: ai et sw=4 sts=4 ts=4
