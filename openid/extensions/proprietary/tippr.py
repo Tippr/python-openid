@@ -105,9 +105,9 @@ class Response(Extension):
         self.channel_name = channel_name
 
     @classmethod
-    def fromSuccessResponse(cls, success_response):
+    def fromSuccessResponse(cls, success_response, signed=True):
         self = cls()
-        args = success_response.message.getArgs(self.ns_uri)
+        args = success_response.extensionResponse(self.ns_uri, signed)
 
         self.facebook_token = args.pop('facebook_token', None)
         self.signup_ip = args.pop('signup_ip', None)
